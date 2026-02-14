@@ -15,16 +15,13 @@ import plotly.express as px
 st.set_page_config(page_title="Stock Prediction Dashboard", layout="wide")
 
 st.title("📈 Stock Price Prediction using LSTM")
-st.markdown("### Professional Dashboard with KPI + Animated Charts + Prediction")
+st.markdown("### Dashboard with KPI + Animated Graphs + Prediction")
 
 # -------------------------------
 # Stock Input
 # -------------------------------
 ticker = st.text_input("Enter Stock Symbol (Example: AAPL, TSLA, INFY)", "AAPL")
 
-# -------------------------------
-# Button Action
-# -------------------------------
 if st.button("Download Data & Train Model"):
 
     # -------------------------------
@@ -36,12 +33,16 @@ if st.button("Download Data & Train Model"):
         st.error("❌ No data found! Please enter a valid stock symbol.")
         st.stop()
 
+    # ✅ FIX MultiIndex Problem (Plotly Error)
+    if isinstance(data.columns, pd.MultiIndex):
+        data.columns = data.columns.get_level_values(0)
+
     data.reset_index(inplace=True)
 
     st.success("✅ Stock Data Downloaded Successfully!")
 
     # -------------------------------
-    # KPI SECTION (Fixed Error)
+    # KPI SECTION
     # -------------------------------
     latest_close = float(data["Close"].iloc[-1])
     highest_price = float(data["High"].max())
@@ -58,22 +59,23 @@ if st.button("Download Data & Train Model"):
     st.divider()
 
     # -------------------------------
-    # STOCK PRICE LINE GRAPH
+    # Closing Price Line Chart
     # -------------------------------
     st.subheader("📉 Closing Price Trend")
 
     fig_line = px.line(
         data,
-        x="Date",
-        y="Close",
-        title=f"{ticker} Closing Price Over Time",
+        x=data["Date"],
+        y=data["Close"],
+        title=f"{ticker} Closing Price Over Time"
     )
+
     st.plotly_chart(fig_line, use_container_width=True)
 
     st.divider()
 
     # -------------------------------
-    # Animated Bar Chart (Volume)
+    # Animated Bar Chart Volume
     # -------------------------------
     st.subheader("📊 Animated Trading Volume Bar Chart")
 
@@ -85,8 +87,8 @@ if st.button("Download Data & Train Model"):
         x="Year",
         y="Volume",
         title="Average Trading Volume per Year (Animated)",
-        text_auto=True,
-        animation_frame="Year"
+        animation_frame="Year",
+        text_auto=True
     )
 
     st.plotly_chart(fig_bar, use_container_width=True)
@@ -101,7 +103,6 @@ if st.button("Download Data & Train Model"):
     x = data[["Open", "High", "Low", "Volume"]].values
     y = data["Close"].values.reshape(-1, 1)
 
-    # Train Test Split
     xtrain, xtest, ytrain, ytest = train_test_split(
         x, y, test_size=0.2, random_state=42
     )
@@ -111,7 +112,7 @@ if st.button("Download Data & Train Model"):
     xtest = xtest.reshape((xtest.shape[0], xtest.shape[1], 1))
 
     # -------------------------------
-    # LSTM Model Architecture
+    # LSTM Model
     # -------------------------------
     model = Sequential()
     model.add(LSTM(128, return_sequences=True,
@@ -122,16 +123,15 @@ if st.button("Download Data & Train Model"):
 
     model.compile(optimizer="adam", loss="mean_squared_error")
 
-    # Training
     with st.spinner("⏳ Training Model... Please wait"):
         model.fit(xtrain, ytrain, epochs=3, batch_size=1, verbose=0)
 
-    st.success("✅ LSTM Model Trained Successfully!")
+    st.success("✅ Model Trained Successfully!")
 
     st.divider()
 
     # -------------------------------
-    # Prediction Output
+    # Prediction
     # -------------------------------
     st.subheader("🔮 Predicted Stock Close Price")
 
@@ -155,9 +155,6 @@ if st.button("Download Data & Train Model"):
         "Predicted Price": predicted_prices.flatten()
     })
 
-    fig_compare = px.line(
-        compare_df,
-        title="Actual vs Predicted Stock Prices"
-    )
+    fig_compare = px.line(compare_df, title="Actual vs Predicted Prices")
 
     st.plotly_chart(fig_compare, use_container_width=True)
